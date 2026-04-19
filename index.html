@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strategic Fusion Dashboard — Intelligence Operations</title>
+  <meta name="description" content="Multi-source intelligence fusion dashboard for OSINT, HUMINT, and IMINT visualization on a geospatial terrain map." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Pulse ring keyframes (used by inline marker divs) -->
+  <style>
+    @keyframes pulseRing {
+      0%   { transform: scale(1);   opacity: 0.6; }
+      70%  { transform: scale(2.2); opacity: 0; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ================================================================
+     TOP BAR
+     ================================================================ -->
+<header id="topbar">
+  <div class="logo">
+    <i class="fa fa-shield-halved"></i>
+    StratFusion
+  </div>
+  <span class="tagline">Multi-Source Intelligence Dashboard</span>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="status-pills">
+    <div class="status-pill osint" title="Open Source Intelligence">
+      <div class="dot"></div>
+      OSINT &nbsp;<strong id="osint-pill-count">0</strong>
+    </div>
+    <div class="status-pill humint" title="Human Intelligence">
+      <div class="dot"></div>
+      HUMINT &nbsp;<strong id="humint-pill-count">0</strong>
+    </div>
+    <div class="status-pill imint" title="Imagery Intelligence">
+      <div class="dot"></div>
+      IMINT &nbsp;<strong id="imint-pill-count">0</strong>
+    </div>
+  </div>
+
+  <button class="btn btn-danger" style="width:auto;padding:6px 14px;font-size:11px;margin-left:10px;" onclick="clearAllData()" title="Clear all intelligence data">
+    <i class="fa fa-trash-can"></i> Clear All
+  </button>
+</header>
+
+<!-- ================================================================
+     MAIN LAYOUT
+     ================================================================ -->
+<div id="layout">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside id="sidebar">
+    <div id="sidebar-inner">
+
+      <!-- ---- OSINT PANEL ---- -->
+      <div class="intel-panel osint-panel">
+        <div class="panel-header" id="osint-panel-header">
+          <div class="panel-icon"><i class="fa fa-globe"></i></div>
+          <div class="panel-title-group">
+            <div class="panel-title">OSINT</div>
+            <div class="panel-subtitle">Open Source Intelligence</div>
+          </div>
+          <span class="panel-count" id="osint-count">0</span>
+          <i class="fa fa-chevron-down panel-chevron"></i>
+        </div>
+
+        <div class="panel-body" id="osint-body">
+          <!-- Source selector -->
+          <div class="source-config">
+            <label><i class="fa fa-database"></i> &nbsp;Intelligence Source</label>
+            <select id="osint-source-select">
+              <option value="all">All Sources (MongoDB + S3)</option>
+              <option value="mongodb">MongoDB / SIGINT-DB</option>
+              <option value="s3">AWS S3 Archives</option>
+            </select>
+          </div>
+
+          <button class="btn btn-teal" id="osint-fetch-btn" onclick="fetchOSINT(document.getElementById('osint-source-select').value)">
+            <i class="fa fa-cloud-download"></i> Fetch OSINT Data
+          </button>
+
+          <button class="btn btn-danger" style="font-size:10px;padding:6px;" onclick="clearTypeData('osint')">
+            <i class="fa fa-xmark"></i> Clear OSINT
+          </button>
+
+          <div class="status-msg" id="osint-status"></div>
+
+          <!-- Node list -->
+          <div class="node-list" id="osint-nodelist">
+            <div class="no-data">No data loaded.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- HUMINT PANEL ---- -->
+      <div class="intel-panel humint-panel">
+        <div class="panel-header">
+          <div class="panel-icon"><i class="fa fa-user-secret"></i></div>
+          <div class="panel-title-group">
+            <div class="panel-title">HUMINT</div>
+            <div class="panel-subtitle">Human Intelligence — Field Reports</div>
+          </div>
+          <span class="panel-count" id="humint-count">0</span>
+          <i class="fa fa-chevron-down panel-chevron"></i>
+        </div>
+
+        <div class="panel-body" id="humint-body">
+          <!-- Drop zone -->
+          <div class="drop-zone humint-zone" id="humint-dropzone">
+            <input type="file" id="humint-file-input" accept=".csv,.json,.xlsx,.xls" multiple />
+            <div class="drop-icon"><i class="fa fa-file-import"></i></div>
+            <div class="drop-label">Drop files here or click to browse</div>
+            <div class="drop-hint">Supports CSV &bull; JSON &bull; Excel (.xlsx)</div>
+          </div>
+
+          <button class="btn btn-danger" style="font-size:10px;padding:6px;" onclick="clearTypeData('humint')">
+            <i class="fa fa-xmark"></i> Clear HUMINT
+          </button>
+
+          <div class="status-msg" id="humint-status"></div>
+
+          <div style="font-size:10px;color:var(--text-muted);padding:2px 0;">
+            <i class="fa fa-circle-info" style="color:var(--accent-amber)"></i>
+            Required columns: <code style="color:var(--accent-amber)">lat, lng, title</code>
+          </div>
+
+          <div class="node-list" id="humint-nodelist">
+            <div class="no-data">No data loaded.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- IMINT PANEL ---- -->
+      <div class="intel-panel imint-panel">
+        <div class="panel-header">
+          <div class="panel-icon"><i class="fa fa-satellite"></i></div>
+          <div class="panel-title-group">
+            <div class="panel-title">IMINT</div>
+            <div class="panel-subtitle">Imagery Intelligence — Satellite / Aerial</div>
+          </div>
+          <span class="panel-count" id="imint-count">0</span>
+          <i class="fa fa-chevron-down panel-chevron"></i>
+        </div>
+
+        <div class="panel-body" id="imint-body">
+          <!-- Drop zone -->
+          <div class="drop-zone imint-zone" id="imint-dropzone">
+            <input type="file" id="imint-file-input" accept=".jpg,.jpeg,.png,.tif,.tiff" multiple />
+            <div class="drop-icon"><i class="fa fa-image"></i></div>
+            <div class="drop-label">Drop satellite imagery here</div>
+            <div class="drop-hint">JPG &bull; JPEG &bull; PNG &bull; TIF</div>
+          </div>
+
+          <button class="btn btn-danger" style="font-size:10px;padding:6px;" onclick="clearTypeData('imint')">
+            <i class="fa fa-xmark"></i> Clear IMINT
+          </button>
+
+          <div class="status-msg" id="imint-status"></div>
+
+          <div style="font-size:10px;color:var(--text-muted);padding:2px 0;">
+            <i class="fa fa-circle-info" style="color:var(--accent-magenta)"></i>
+            Embed coords in filename: <code style="color:var(--accent-magenta)">name_LAT_LNG.jpg</code>
+          </div>
+
+          <div class="node-list" id="imint-nodelist">
+            <div class="no-data">No imagery loaded.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar-inner -->
+
+    <!-- ---- FILTER BAR ---- -->
+    <div id="filter-bar">
+      <div class="filter-title"><i class="fa fa-sliders"></i> &nbsp;Layer Visibility</div>
+      <div class="filter-toggles">
+        <button class="filter-btn osint active"  id="filter-osint"  title="Toggle OSINT layer">
+          <i class="fa fa-globe"></i> OSINT
+        </button>
+        <button class="filter-btn humint active" id="filter-humint" title="Toggle HUMINT layer">
+          <i class="fa fa-user-secret"></i> HUMINT
+        </button>
+        <button class="filter-btn imint active"  id="filter-imint"  title="Toggle IMINT layer">
+          <i class="fa fa-satellite"></i> IMINT
+        </button>
+      </div>
+    </div>
+  </aside><!-- /sidebar -->
+
+  <!-- ========== MAP ========== -->
+  <div id="map-container">
+    <div id="map"></div>
+
+    <!-- Map info overlay -->
+    <div id="map-info">
+      Total Nodes: <span id="info-total">0</span><br>
+      OSINT: <span id="info-osint">0</span> &nbsp;|&nbsp;
+      HUMINT: <span id="info-humint">0</span> &nbsp;|&nbsp;
+      IMINT: <span id="info-imint">0</span>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<!-- ================================================================
+     HOVER POP-UP (absolutely positioned, shown on marker hover)
+     ================================================================ -->
+<div id="hover-popup"></div>
+
+<!-- ================================================================
+     LIBRARIES
+     ================================================================ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Application -->
+<script src="app.js?v=2"></script>
+
+</body>
+</html>

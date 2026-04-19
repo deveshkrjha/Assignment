@@ -1,0 +1,7 @@
+title,lat,lng,report,source,date,confidence
+Forward Base Alpha,34.5553,69.2075,Troops observed moving south along route 7,Agent 7,2024-01-15,HIGH
+Checkpoint Bravo,33.9391,67.7100,Civilian evacuation in progress near bridge,Agent 12,2024-01-16,MEDIUM
+Supply Depot Gamma,35.3473,62.2027,Large vehicle convoy spotted offloading cargo,Agent 3,2024-01-17,HIGH
+Observation Post Delta,34.0151,71.5785,Enemy radio communications intercepted,Agent 9,2024-01-18,LOW
+Market Square Echo,31.6104,65.7372,Meeting of local commanders observed,Agent 4,2024-01-19,MEDIUM
+Valley Corridor Foxtrot,35.9125,70.0583,Sniper activity reported by local asset,Agent 11,2024-01-20,HIGH
